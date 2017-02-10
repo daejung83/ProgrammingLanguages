@@ -329,18 +329,36 @@ liftIntOp op (IntVal x) (IntVal y) = IntVal $ op x y
 liftIntOp _ _ _ = ExnVal "Cannot lift"
 
 liftBoolOp :: (Bool -> Bool -> Bool) -> Val -> Val -> Val
-liftBoolOp = undefined
+liftBoolOp op (BoolVal x) (BoolVal y) = BoolVal $ op x y
+liftBoolOp _ _ _ = ExnVal "Cannot lift"
 
 liftCompOp :: (Int -> Int -> Bool) -> Val -> Val -> Val
-liftCompOp = undefined
+liftCompOp op (IntVal x) (IntVal y) = BoolVal $ op x y
+liftCompOp _ _ _ = ExnVal "Cannot lift"
 
 --- Eval
 --- ----
+
+{-data Exp = IntExp Int
+         | BoolExp Bool
+         | FunExp [String] Exp
+         | LetExp [(String,Exp)] Exp
+         | AppExp Exp [Exp]
+         | IfExp Exp Exp Exp
+         | IntOpExp String Exp Exp
+         | BoolOpExp String Exp Exp
+         | CompOpExp String Exp Exp
+         | VarExp String
+    deriving (Show, Eq) -}
+
 
 eval :: Exp -> Env -> Val
 eval = undefined
 
 --- ### Constants
+--- IntExp Int
+--- BoolExp Bool
+
 
 --- ### Variables
 
