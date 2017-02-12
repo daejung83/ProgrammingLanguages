@@ -438,7 +438,7 @@ eval (AppExp fun_arr exp_arr) env =
   in case o of
     CloVal arr b env ->
       evalAppExp arr exp_arr b env env
-    otherwise-> ExnVal "Apply to non-closure"
+    otherwise -> ExnVal "Apply to non-closure"
 
 
 --- ### Let Expressions
@@ -452,8 +452,8 @@ eval (LetExp a b) env = evalLetExp (LetExp a b) env env
 
 --helper for let
 evalLetExp :: Exp -> Env -> Env -> Val
-evalLetExp (LetExp ((x,y):a) b) env new_env =
-  evalLetExp (LetExp a b) env $ H.insert x (eval y env) new_env
+evalLetExp (LetExp ((x,y):xs) b) env new_env =
+  evalLetExp (LetExp xs b) env $ H.insert x (eval y env) new_env
 
 evalLetExp (LetExp [] b) env new_env = eval b new_env
 
@@ -471,12 +471,24 @@ evalAppExp _ _ b env new_env = eval b new_env
 exec :: Stmt -> PEnv -> Env -> Result
 exec (PrintStmt e) penv env = (val, penv, env)
     where val = show $ eval e env
-exec _ _ _ = undefined
 
 --- ### Set Statements
-
+exec (SetStmt s val) penv env = ("", penv, H.insert s (eval val env) env)
 --- ### Sequencing
+exec (SeqStmt xs) penv env = ( (execSeqStmt xs penv env), penv, env)
 
 --- ### If Statements
+exec (IfStmt (BoolExp a) b c) penv env =
+  if a
+    then exec b penv env
+    else exec c penv env
+exec (IfStmt _ _ _) penv env = ("exn: Condition is not a Bool", penv, env)
 
 --- ### Procedure and Call Statements
+
+
+--exec helper
+execSeqStmt :: [Stmt] -> PEnv -> Env -> String
+execSeqStmt (PrintStmt x:xs) penv env = show (eval x env) ++ execSeqStmt xs penv env
+execSeqStmt _ _ _ = []
+
