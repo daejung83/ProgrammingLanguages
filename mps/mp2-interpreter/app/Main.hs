@@ -353,24 +353,117 @@ liftCompOp _ _ _ = ExnVal "Cannot lift"
 
 
 eval :: Exp -> Env -> Val
-eval = undefined
-
 --- ### Constants
---- IntExp Int
---- BoolExp Bool
+justfilt (Just a) = a
 
+oplook x y = justfilt(H.lookup x y)
+intlook x = oplook x intOps
+--- IntExp Int
+eval (IntExp i) _ = IntVal i
+--- BoolExp Bool
+eval (BoolExp i) _ = BoolVal i
 
 --- ### Variables
 
---- ### Arithmetic
+eval (VarExp s) env =
+    if val == Nothing
+      then ExnVal "No match in env"
+      else justfilt(val)
+  where val = H.lookup s env
 
+--- ### Arithmetic
+{-eval (IntOpExp op (IntExp e1) (IntExp e2)) env =
+  case H.lookup op intOps
+    Just o ->
+      if op == "/" && e2 == IntVal 0
+        then ExnVal "Division by 0"
+        else IntVal $ o e1 e2
+    Nothing -> ExnVal "Cannot lift"-}
+
+eval (IntOpExp op e1 e2) env =
+  let v1 = eval e1 env
+      v2 = eval e2 env
+      Just o = H.lookup op intOps
+  in if(op == "/" && v2 == IntVal 0)
+        then ExnVal "Division by 0"
+        else liftIntOp o v1 v2
+  
 --- ### Boolean and Comparison Operators
+eval (BoolOpExp op e1 e2) env =
+  let v1 = eval e1 env
+      v2 = eval e2 env
+      Just o = H.lookup op boolOps
+    in liftBoolOp o v1 v2
+
+eval (CompOpExp op e1 e2) env =
+  let v1 = eval e1 env
+      v2 = eval e2 env
+      Just o = H.lookup op compOps
+    in liftCompOp o v1 v2
 
 --- ### If Expressions
+{-
+eval (IfExp (BoolExp con) e1 e2) env =
+  let v1 = eval e1 env
+      v2 = eval e2 env
+    in if con == True
+        then v1
+        else v2
+
+eval (IfExp (BoolOpExp op (BoolExp c1) (BoolExp c2)) e1 e2) env =
+    let con = eval(op c1 c2) env
+        v1 = eval e1 env
+        v2 = eval e2 env
+      in if con == True
+          then v1
+          else v2
+
+eval (IfExp _ e1 e2) env = ExnVal "Condition is not a Bool"
+-}
+eval (IfExp op e1 e2) env =
+  let o = eval op env
+    in case o of
+      BoolVal a -> 
+          if a
+            then eval e1 env
+            else eval e2 env
+      otherwise -> ExnVal "Condition is not a Bool"
 
 --- ### Functions and Function Application
 
+eval (FunExp arr b) env = CloVal arr b env
+
+eval (AppExp fun_arr exp_arr) env =
+  let o = eval fun_arr env
+  in case o of
+    CloVal arr b env ->
+      evalAppExp arr exp_arr b env env
+    otherwise-> ExnVal "Apply to non-closure"
+
+
 --- ### Let Expressions
+
+--LetExp [(String,Exp)] Exp
+
+--eval (string, (eval arry), eval val) env
+--eval (LetExp [] e2) env = eval e2 env
+                                      
+eval (LetExp a b) env = evalLetExp (LetExp a b) env env
+
+--helper for let
+evalLetExp :: Exp -> Env -> Env -> Val
+evalLetExp (LetExp ((x,y):a) b) env new_env =
+  evalLetExp (LetExp a b) env $ H.insert x (eval y env) new_env
+
+evalLetExp (LetExp [] b) env new_env = eval b new_env
+
+
+--helper for App
+evalAppExp :: [String] -> [Exp] -> Exp -> Env -> Env -> Val
+evalAppExp (x:xs) (y:ys) b env new_env =
+  evalAppExp xs ys b env $ H.insert x (eval y env) new_env
+
+evalAppExp _ _ b env new_env = eval b new_env
 
 --- Statements
 --- ----------
