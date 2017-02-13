@@ -460,10 +460,11 @@ evalLetExp (LetExp [] b) env new_env = eval b new_env
 
 --helper for App
 evalAppExp :: [String] -> [Exp] -> Exp -> Env -> Env -> Val
+evalAppExp [] _ b env new_env = eval b new_env
 evalAppExp (x:xs) (y:ys) b env new_env =
   evalAppExp xs ys b env $ H.insert x (eval y env) new_env
 
-evalAppExp _ _ b env new_env = eval b new_env
+
 
 --- Statements
 --- ----------
@@ -475,8 +476,11 @@ exec (PrintStmt e) penv env = (val, penv, env)
 --- ### Set Statements
 exec (SetStmt s val) penv env = ("", penv, H.insert s (eval val env) env)
 --- ### Sequencing
-exec (SeqStmt xs) penv env = ( (execSeqStmt xs penv env), penv, env)
-
+exec (SeqStmt []) penv env = ("", penv, env)
+exec (SeqStmt (x:xs)) penv env =
+        let (a , penv1, env1) = exec x penv env
+            (b , penv2, env2) = exec (SeqStmt xs) penv1 env1
+        in (a ++ b, penv2, env2)
 --- ### If Statements
 exec (IfStmt (BoolExp a) b c) penv env =
   if a
@@ -485,10 +489,15 @@ exec (IfStmt (BoolExp a) b c) penv env =
 exec (IfStmt _ _ _) penv env = ("exn: Condition is not a Bool", penv, env)
 
 --- ### Procedure and Call Statements
+--ProcedureStmt String [String] Stmt
+exec (ProcedureStmt a xs com) penv env = ("", H.insert a (ProcedureStmt a xs com) penv, env)
 
+--CallStmt String [Exp]
+--exec (CallStmt com comlist) penv env = 
 
 --exec helper
+{-
 execSeqStmt :: [Stmt] -> PEnv -> Env -> String
 execSeqStmt (PrintStmt x:xs) penv env = show (eval x env) ++ execSeqStmt xs penv env
 execSeqStmt _ _ _ = []
-
+-}
