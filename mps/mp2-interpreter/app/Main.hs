@@ -493,9 +493,19 @@ exec (IfStmt _ _ _) penv env = ("exn: Condition is not a Bool", penv, env)
 exec (ProcedureStmt a xs com) penv env = ("", H.insert a (ProcedureStmt a xs com) penv, env)
 
 --CallStmt String [Exp]
---exec (CallStmt com comlist) penv env = 
+exec (CallStmt com list) penv env = 
+  let h = H.lookup com penv
+  in case h of
+    Just (ProcedureStmt a xs com) ->
+      exec com penv (execCallStmt xs list env) 
+    otherwise -> ("Procedure " ++ com ++ " undefined", penv, env)
 
 --exec helper
+execCallStmt :: [String] -> [Exp] -> Env -> Env
+execCallStmt [] _ env = env
+execCallStmt _ [] env = env
+execCallStmt (x:xs) (y:ys) env = H.union (H.fromList [(x, eval y env)]) (execCallStmt xs ys env)
+
 {-
 execSeqStmt :: [Stmt] -> PEnv -> Env -> String
 execSeqStmt (PrintStmt x:xs) penv env = show (eval x env) ++ execSeqStmt xs penv env
