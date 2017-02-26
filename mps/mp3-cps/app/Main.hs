@@ -201,12 +201,22 @@ main = do putStrLn "Welcome to the CPS Transformer!"
 --- ### `factk :: Integer -> (Integer -> t) -> t`
 
 factk :: Integer -> (Integer -> t) -> t
-factk = undefined
+factk p k = 
+    if p > 1
+      then factk (p-1) (\res -> k $ p * res)
+      else k 1
 
 --- ### `evenoddk :: [Integer] -> (Integer -> t) -> (Integer -> t) -> t`
 
 evenoddk :: [Integer] -> (Integer -> t) -> (Integer -> t) -> t
-evenoddk = undefined
+evenoddk (x:xs) k ko =
+  if (x `mod` 2 == 0)
+    then if xs == []
+            then k x
+            else evenoddk xs (\res -> k (x + res)) ko
+    else if xs == []
+            then ko x
+            else evenoddk xs k (\res -> ko $ x + res)
 
 --- Automated Translation
 --- ---------------------
@@ -215,24 +225,75 @@ gensym :: Integer -> (String, Integer)
 gensym i = ("v" ++ show i, i + 1)
 
 --- ### Define `isSimple`
-
+{-
+data Exp = IntExp Integer
+         | VarExp String
+         | LamExp String Exp
+         | IfExp Exp Exp Exp
+         | OpExp String Exp Exp
+         | AppExp Exp Exp
+         deriving (Eq)
+-}
 isSimple :: Exp -> Bool
-isSimple = undefined
+isSimple (AppExp a b) = False
+isSimple (IntExp a) = True
+isSimple (VarExp a) = True
+isSimple (LamExp a b) = isSimple b 
+isSimple (IfExp a b c) = isSimple a && isSimple b && isSimple c
+isSimple (OpExp a b c) = isSimple b && isSimple c
 
 --- ### `cpsExp :: Exp -> Exp -> Integer -> (Exp, Integer)`
 
 cpsExp :: Exp -> Exp -> Integer -> (Exp, Integer)
-cpsExp = undefined
 
 --- #### Define `cpsExp` for Integer and Variable Expressions
+cpsExp (IntExp i) k gen = (AppExp k (IntExp i), gen)
+cpsExp (VarExp v) k gen = (AppExp k (VarExp v), gen)
 
 --- #### Define `cpsExp` for If Expressions
+cpsExp (IfExp e1 e2 e3) k gen 
+      | isSimple e1 = let (a, b) = cpsExp e2 k gen
+                          (c, d) = cpsExp e3 k b
+                      in (IfExp e1 a c , d)
+      | otherwise = let (v, next) = gensym gen
+                        (a, b) = cpsExp e2 k next
+                        (c, d) = cpsExp e3 k b
+                    in cpsExp e1 (LamExp v (IfExp(VarExp v) a c)) d
+              
 
 --- #### Define `cpsExp` for Operator Expressions
+cpsExp (OpExp op e1 e2) k gen
+      | isSimple e1 && isSimple e2 = (AppExp k (OpExp op e1 e2), gen)
+      | not (isSimple e1) && isSimple e2 = 
+                                let (v, gen2) = gensym gen
+                                in cpsExp e1 (LamExp v (AppExp k (OpExp op (VarExp v) e2))) gen2
+      | isSimple e1 && not (isSimple e2) =
+                                let (v, gen2) = gensym gen
+                                in cpsExp e2 (LamExp v (AppExp k (OpExp op e1 (VarExp v)))) gen2
+      | not (isSimple e1) && not (isSimple e2) =
+                                let (v1, gen1) = gensym gen
+                                    (v2, gen2) = gensym gen1
+                                    (r1, g1) = cpsExp e2 (LamExp v2 (AppExp k(OpExp op (VarExp v1) (VarExp v2)))) gen2
+                                in cpsExp e1 (LamExp v1 r1) g1
 
 --- #### Define `cpsExp` for Application Expressions
+cpsExp (AppExp e1 e2) k gen
+-- | isSimple e2 = (AppExp (AppExp k e2) e1, gen)
+      | isSimple e2 = ((AppExp (AppExp e1 e2) k), gen)
+      | not (isSimple e2) = 
+                let (v, g1) = gensym gen
+                in cpsExp e2 (LamExp v (AppExp  (AppExp e1 (VarExp v)) k)) g1
 
+--data Stmt = Decl String [String] Exp
 --- ### Define `cpsDecl`
-
 cpsDecl :: Stmt -> Stmt
-cpsDecl = undefined
+cpsDecl (Decl str sarr ex) =
+    let karr = sarr++["k"]
+        k = VarExp "k"
+        (ns, en) = cpsExp ex k 0
+    in Decl str karr ns
+
+
+
+
+
