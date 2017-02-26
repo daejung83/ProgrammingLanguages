@@ -15,4 +15,8 @@ instance Applicative Counter where
 
 instance Monad Counter where
     return x = Counter x 0
-    Counter a i >>= f = undefined  --- YOUR CODE HERE
+    Counter a i >>= f = 
+    	let Counter xa i = f a
+    	in Counter xa (i+1)
+          --- YOUR CODE HERE
+
