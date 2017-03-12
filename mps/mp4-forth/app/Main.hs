@@ -104,7 +104,7 @@ liftIntOp _  _        = underflow
 --- ### `liftCompOp`
 
 liftCompOp :: (Integer -> Integer -> Bool) -> IStack -> IStack
-liftCompOp = undefined
+liftCompOp coop (x:y:xs) = (if (y `coop` x) then -1 else 0) : xs
 
 --- The Dictionary
 --- --------------
@@ -115,13 +115,22 @@ initialDictionary = initArith ++ initComp
 --- ### Arithmetic Operators
 
 initArith :: Dictionary
-initArith = [ ("+",  [Prim (liftIntOp  (+))])
+initArith = [   ("+",  [Prim (liftIntOp  (+))]),
+                ("-",  [Prim (liftIntOp  (-))]),
+                ("*",  [Prim (liftIntOp  (*))]),
+                ("/",  [Prim (liftIntOp  (div))])
             ]
 
 --- ### Comparison Operators
 
 initComp :: Dictionary
-initComp = []
+initComp = [    (">",  [Prim (liftCompOp  (>))]),
+                ("<",  [Prim (liftCompOp  (<))]),
+                (">=",  [Prim (liftCompOp  (>=))]),
+                ("<=",  [Prim (liftCompOp  (<=))]),
+                ("==",  [Prim (liftCompOp  (==))]),
+                ("!=",  [Prim (liftCompOp  (/=))])
+            ]
 
 --- The Parser
 --- ----------
@@ -141,16 +150,34 @@ splitWellNested (start,end) words = splitWN 0 [] words
 --- ### Input Parser `splitIf`
 
 -- ifs have an optional `else` which also must be well-nested
+
 splitIf :: [String] -> ([String], [String], [String])
-splitIf = undefined
+splitIf words = 
+    let (rest, then_arr) = splitWellNested ("if", "then") words
+        (if_arr, else_arr) = split_help rest
+    in (if_arr, else_arr, then_arr)
+
+split_help :: [String] -> ([String], [String])
+split_help words = splitWN 0 [] words
+    where
+        splitWN 0 acc (word:rest)
+            | word == "else" = (reverse acc, rest)
+        splitWN n acc (word:rest)
+            | word == "if"   = splitWN (n+1) (word:acc) rest
+            | word == "then" = splitWN (n-1) (word:acc) rest
+            | otherwise      = splitWN n     (word:acc) rest
+        splitWN _ acc []     = (reverse acc, [])
+
 
 --- The Evaluator
 --- -------------
 
+-- type ForthState = (IStack, CStack, Dictionary, Output)
+
 eval :: [String] -> ForthState -> ForthState
 
 -- empty input and empty call stack -> return current state
-eval [] (istack, [],       dict, out) = (istack, [], dict, reverse out)
+eval [] (istack, [], dict, out) = (istack, [], dict, reverse out)
 
 -- empty input and non-empty call stack -> pop element off call stack
 eval [] (istack, c:cstack, dict, out) = eval c (istack, cstack, dict, out)
@@ -160,14 +187,54 @@ eval (".":words) (i:istack, cstack, dict, out)
 eval (".":words) _ = underflow
 
 --- ### Printing the Stack
-
+eval (".S":words) (istack, cstack, dict, out)
+    = eval words (istack, cstack, dict,  intercalate " " (reverse (map show istack)) : out)
+        
 --- ### Stack Manipulations
+eval ("dup":words) (i:istack, cstack, dict, out) = eval words (i:i:istack, cstack, dict, out)
+
+eval ("dup":words) _ = underflow
+
+eval ("drop":words) (i:istack, cstack, dict, out) = eval words (istack, cstack, dict, out)
+
+eval ("drop":words) _ = underflow
+
+eval ("swap":words) (x:y:istack, cstack, dict, out) = eval words (y:x:istack, cstack, dict, out)
+
+eval ("swap":words) _ = underflow
+
+eval ("rot":words) (x:y:z:istack, cstack, dict, out) = eval words(z:x:y:istack, cstack, dict, out)
+
+eval ("rot":words) _ = underflow
 
 --- ### User definitions
 
+eval (":":words) (istack, cstack, dict, out) = 
+    let (def:parsed, rest) = splitWellNested (":", ";") words
+    in eval rest (istack, cstack, (def, [Def parsed]):dict, out)
+
 --- ### Conditionals
 
---- ### Loops
+eval ("if":words) (i:istack, cstack, dict, out) 
+    | i == 0 = eval (else_arr++then_arr) (istack, cstack, dict, out)
+    | otherwise = eval (if_arr++then_arr) (istack, cstack, dict, out)
+        where (if_arr, else_arr, then_arr) = splitIf(words)
+
+eval ("if":words) _ = underflow
+
+
+eval ("begin":words) (istack, cstack, dict, out) =
+    let (begin, again) = splitWellNested("begin", "again") words
+    in eval begin (istack, (("begin" : begin ++ ["again"]):again:cstack), dict, out)
+
+
+eval ("exit":words) (istack, cstack, dict, out) =
+    evalExit (istack, cstack, dict, out)
+    where evalExit (istack, c:cstac, dict, out) =
+                if head c == "begin"
+                then eval [] (istack, cstac, dict, out)
+                else evalExit (istack, cstac, dict, out)
+          evalExit _ = underflow
 
 --- ### Lookup in dictionary
 
