@@ -1,0 +1,35 @@
+
+
+ ## Standard Output 
+
+
+Running Tests
+=============
+Pass: Lifting functions
+Pass: ConstExps
+Pass: IntOpExp
+Pass: BoolAndCompOpExp
+Pass: IfExp
+Pass: VarExp
+Pass: FunExp
+Pass: AppExp1
+Fail [True,True,True,False,False,False,True,True]: AppExp2
+Pass: LetExp1
+Pass: LetExp2
+Fail [True,True,True,True,True,False]: LetExp3
+Pass: SeqStmt
+Pass: IfStmt
+Pass: SetStmt
+Pass: ProcedureStmt
+Pass: CallStmt1
+Fail [True,False,False]: CallStmt2
+
+Score: 83 / 100
+You have completed enough of the MP to get credit for the ML.
+
+
+ ## Errors (if any) 
+
+
+
+Score: 83.0
