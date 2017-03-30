@@ -1,0 +1,51 @@
+Grade report for Derek Kim
+Programming Languages (cs421) 2017-01
+Report generated 2017-03-30 14:04:30
+
+
+Factors are {16: 0.0, 11: 4.0, 12: 1.0, 13: 8.0, 14: 6.0, 15: 0.0}
+                   Assignment  Status Points / Max  Norm Weight% Points
+-----------------------------------------------------------------------
+           Recursion - Exam 1  Graded     10 /  10 100.0    3.33   3.33
+      Tail Recursion - Exam 1 Pending      0 /  10   0.0    0.00   0.00
+Algebraic Data Types - Exam 1  Graded     10 /  10 100.0    3.33   3.33
+        Writing HOFs - Exam 1  Graded     10 /  10 100.0    3.33   3.33
+          Using HOFs - Exam 1  Graded      7 /  10  70.0    3.33   2.33
+     Lambda Calculus - Exam 1 Pending      0 /  10   0.0    0.00   0.00
+       Continuations - Exam 1  Graded      4 /  10  40.0    3.33   1.33
+        Type Classes - Exam 1  Graded      5 /  10  50.0    3.33   1.67
+               Haskell - MP 1  Graded    100 / 100 100.0    3.75   3.75
+           Interpreter - MP 2  Graded     83 / 100  83.0    3.75   3.11
+                   CPS - MP 3  Graded    100 / 100 100.0    3.75   3.75
+                 Forth - MP 4  Graded    100 / 100 100.0    3.75   3.75
+               Parsing - MP 5 Pending      0 / 100   0.0    0.00   0.00
+                Scheme - MP 6 Pending      0 / 100   0.0    0.00   0.00
+       Type Inferencer - MP 7 Pending      0 / 100   0.0    0.00   0.00
+           Interpreter - ML 2  Graded    100 / 100 100.0   15.00  15.00
+                   CPS - ML 3 Dropped    100 / 100 100.0    0.00   0.00
+                 Forth - ML 4 Pending      0 / 100   0.0    0.00   0.00
+                Scheme - ML 5 Pending      0 / 100   0.0    0.00   0.00
+              Gitlab Activity  Graded      1 /   1 100.0    0.62   0.62
+           Recursion Activity  Graded      2 /   2 100.0    0.62   0.62
+           HOF Activity (fix)  Graded      2 /   2 100.0    0.62   0.62
+              MyList Activity  Graded      1 /   1 100.0    0.62   0.62
+              Lambda Activity  Graded      1 /   1 100.0    0.62   0.62
+                 CPS Activity  Graded      3 /   3 100.0    0.62   0.62
+               Monad Activity  Graded      2 /   2 100.0    0.62   0.62
+                  LL Activity  Graded      2 /   2 100.0    0.62   0.62
+
+
+
+Earned points so far:  49.70
+Graded points so far:  55.00
+       Current score: 90.36%
+        Max possible: 94.70%
+
+ (Max possible does not take grade replacement from final into account.)
+If you believe there is an error that only affects you, please open an issue on your gitlab account.
+If you believe there is an error likely to be systemic, post a note on Piazza.
+Note: midterm 1 score entry will be completed on Friday.
+
+Notes:
+CPS - ML 3 was dropped.  Its score was 100.0%.
+
