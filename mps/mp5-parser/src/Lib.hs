@@ -71,29 +71,46 @@ ident = do i <- try $ do ii <- many1 (oneOf (['a'..'z'] ++ ['A'..'Z'])) <?> "an 
 
 -- realIdent - like ident, but returns it as a Symbol
 realIdent :: Parser Symbol
-realIdent = undefined
+realIdent = do i <- ident <?> "an identifier"
+               _ <- inlinews
+               return (Symbol i)
 
 -- epsilon - parse "eps" or "ε" returning Epsilon
 epsilon :: Parser Symbol
-epsilon = undefined
+epsilon = do _ <- (string "ε" <|> string "eps") <?> "epsilon"
+             _ <- inlinews
+             return Epsilon
 
 -- epsilonLine - parse a production that only has an epsilon in it.
 epsilonLine :: Parser [Symbol]
-epsilonLine = undefined
+epsilonLine = do _ <- many1 epsilon
+                 _ <- endOfLine
+                 return [Epsilon]
 
 -- tokenLine - parse a production that is not an epsilon.
 tokenLine :: Parser [Symbol]
-tokenLine = undefined
+tokenLine = do i <- many1 realIdent
+               _ <- endOfLine
+               return i
 
 -- initialProduction - parse an initial production line
 initialProduction :: Parser (String,[Symbol])
-initialProduction = undefined
+initialProduction = do try $ do s <- ident
+                                _ <- stringws "->"
+                                res <- tokenLine <|> epsilonLine
+                                return (s, res)
 
 continueProduction :: Parser [Symbol]
-continueProduction = undefined
+continueProduction = do try $ do _ <- inlinews
+                                 _ <- stringws "|"
+                                 res <- tokenLine <|> epsilonLine
+                                 return res
+
 
 production :: Parser Production
-production = undefined
+production = do (s, x) <- initialProduction
+                xs <- many1 continueProduction
+                return (Production s (x:xs))
 
 grammar :: Parser Grammar
 grammar = do p <- many1 production
@@ -105,13 +122,18 @@ p1 = "S -> x S y\n | z q Y\nY -> x Y y \n| eps\n"
 -- Some analysis
 
 nonTerminals :: [Production] -> S.HashSet Symbol
-nonTerminals _ = S.empty
+nonTerminals [] = S.empty
+nonTerminals ((Production s _):xs) = S.insert (Symbol s) (nonTerminals xs)
 
 symbols :: [Production] -> S.HashSet Symbol
-symbols _ = S.empty
+symbols ((Production s ss):xs) = S.insert (Symbol s) (symbols_help ss xs)
 
 terminals :: [Production] -> S.HashSet Symbol
-terminals _ = S.empty
+terminals g = S.difference (symbols g) (nonTerminals g)
+
+symbols_help :: [[Symbol]] -> [Production] -> S.HashSet Symbol
+symbols_help [] xx = symbols xx
+symbols_help ((x:xc):xs) xx = S.insert x (symbols_help (xc:xs) xx)
 
 fix f x =
   if x == result
@@ -122,12 +144,16 @@ fix f x =
 -- getFirstSet grammar
 -- calculate the first sets of the nonterminals in a grammar
 getFirstSet :: Grammar -> H.HashMap Symbol (S.HashSet Symbol)
-getFirstSet = undefined
+getFirstSet (Grammar psets nonterminals terminals) = 
+  fix aux initial
+  where initial = H.fromList (zip (S.toList nonterminals) (repeat S.empty))
+        aux fs = undefined --map first ((!) fs psets)
 
 -- first fs symbols
 -- return the first set of a set of symbols
 first :: S.HashSet Symbol -> [Symbol] -> S.HashSet Symbol
-first  = undefined
+first s [] = s
+first s (x:xs) = undefined--s.insert x s
 
 -- isLL
 isLL :: Grammar -> Bool
