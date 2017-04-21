@@ -139,7 +139,7 @@ fix f x =
   where result = f x
 
 getFirstSet :: Grammar -> H.HashMap Symbol (S.HashSet Symbol)
-getFirstSet (Grammar psets nonterminals terminals) =
+getFirstSet (Grammar psets terminals nonterminals) =
      fix aux initial
      where initial = H.fromList (zip (S.toList nonterminals) (repeat S.empty))
            aux fs = undefined
