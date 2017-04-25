@@ -196,7 +196,7 @@ first_esp s (x:xs) =
 isLL :: Grammar -> Bool
 isLL (Grammar psets terminals nonterminals) =
     let first_set = getFirstSet (Grammar psets terminals nonterminals)
-        result = (isLL_help first_set psets) && not (isCommon psets nonterminals S.empty)
+        result = (isLL_help first_set psets) && not (isCommon first_set (Grammar psets terminals nonterminals))
     in result
 
 isLL_help :: H.HashMap Symbol (S.HashSet Symbol) -> [Production] -> Bool
@@ -208,7 +208,32 @@ isLL_help first_set ((Production s _ ):xs) =
             then False
             else isLL_help first_set xs
         _ -> isLL_help first_set xs
+{-
+isCommon :: H.HashMap Symbol (S.HashSet Symbol) -> [Production] -> S.HashSet Symbol -> Bool
+isCommon fs [] nt = False
+isCommon fs ((Production s xx):xs) nt = (isCommon_help fs (Symbol s) xx nt S.empty) && (isCommon fs xs S.empty)
+      
+isCommon_help :: H.HashMap Symbol (S.HashSet Symbol) -> Symbol -> [[Symbol]] -> S.HashSet Symbol -> S.HashSet Symbol -> Bool
+isCommon_help fs s [] nt ls = False
+isCommon_help fs s ((x:r):xs) nt ls
+      | S.member x nt = (not (S.null (S.intersection f_set s_set)) || (isCommon_help fs s xs nt (S.union (S.insert x ls) s_set)))
+      | otherwise = if S.member x ls
+                    then True
+                    else isCommon_help fs s xs nt (S.insert x ls)
+        where Just f_set = H.lookup s fs
+              Just s_set = H.lookup x fs
+-}
 
+
+isCommon :: H.HashMap Symbol (S.HashSet Symbol) -> Grammar -> Bool
+isCommon fs (Grammar ((Production s ss):xs) terminals nonterminals) =
+  fst (foldl (\(indic, s) v -> if indic then (True, s) else (let f = S.intersection terminals (first fs v) 
+          in if S.null $ S.intersection f s then (False, S.union f s) else (True,s))) (False, S.empty) ss)
+                || isCommon fs (Grammar xs terminals nonterminals)
+isCommon _ _ = False
+
+
+{-
 isCommon :: [Production] -> S.HashSet Symbol -> S.HashSet Symbol -> Bool
 isCommon [] _ _ = False
 isCommon ((Production s ((r:x):xx)):xs) nt hs =
@@ -216,3 +241,4 @@ isCommon ((Production s ((r:x):xx)):xs) nt hs =
         then True
         else isCommon ((Production s (xx)):xs) nt (S.insert r hs) 
 isCommon ((Production s _):xs) nt _ = isCommon xs nt S.empty
+-}
