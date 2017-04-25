@@ -196,7 +196,7 @@ first_esp s (x:xs) =
 isLL :: Grammar -> Bool
 isLL (Grammar psets terminals nonterminals) =
     let first_set = getFirstSet (Grammar psets terminals nonterminals)
-        result = (isLL_help first_set psets) && not (isCommon psets S.empty)
+        result = (isLL_help first_set psets) && not (isCommon psets nonterminals S.empty)
     in result
 
 isLL_help :: H.HashMap Symbol (S.HashSet Symbol) -> [Production] -> Bool
@@ -209,10 +209,10 @@ isLL_help first_set ((Production s _ ):xs) =
             else isLL_help first_set xs
         _ -> isLL_help first_set xs
 
-isCommon :: [Production] -> S.HashSet Symbol -> Bool
-isCommon [] _ = False
-isCommon ((Production s ((r:x):xx)):xs) hs =
+isCommon :: [Production] -> S.HashSet Symbol -> S.HashSet Symbol -> Bool
+isCommon [] _ _ = False
+isCommon ((Production s ((r:x):xx)):xs) nt hs =
         if S.member r hs
         then True
-        else isCommon ((Production s (xx)):xs) (S.insert r hs) 
-isCommon ((Production s _):xs) _ = isCommon xs S.empty
+        else isCommon ((Production s (xx)):xs) nt (S.insert r hs) 
+isCommon ((Production s _):xs) nt _ = isCommon xs nt S.empty
