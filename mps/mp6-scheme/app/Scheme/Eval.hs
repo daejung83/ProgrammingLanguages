@@ -173,14 +173,28 @@ eval expr@(List lst) = evalList $ map flattenList lst where
     --        put env
     --        return val
 
+    -- evalList [Symbol "let*", List xx, body] =
+    --     do env <- get
+    --        tup <- mapM getBinding xx
+    --        forM tup (\(x, v) -> do vn <- eval v
+    --                                modify $ H.insert x vn) 
+    --        val <- eval body
+    --        put env
+    --        return val
+
     evalList [Symbol "let*", List xx, body] =
         do env <- get
-           tup <- mapM getBinding xx
-           forM tup (\(x, v) -> do vn <- eval v
-                                   modify $ H.insert x vn) 
+           aux xx
            val <- eval body
            put env
            return val
+        where aux [x] = do (x, e) <- getBinding x
+                           vn <- eval e
+                           modify $ H.insert x vn
+              aux (x:xs) = do (x, e) <- getBinding x
+                              vn <- eval e
+                              modify $ H.insert x vn
+                              aux xs
 
 
     -- lambda
