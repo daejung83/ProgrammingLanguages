@@ -38,43 +38,63 @@ liftBoolVargOp f = PrimFunc $ return . Boolean . f . map lowerBool
 
 -- TODO
 liftIntBinOp :: (Int -> Int -> Int) -> Val
-liftIntBinOp _ =
+liftIntBinOp f = PrimFunc p where
   -- You should replace the following line with your own implementation
-  PrimFunc . const $ unimplemented "Lifting binary integer operator (`liftIntBinOp`)"
+  p [] = throwError $ UnexpectedArgs []
+  p [x] = throwError $ UnexpectedArgs [x]
+  p xx = Number . foldl1 f <$> mapM lowerInt xx
 
 -- TODO
 liftIntUnaryOp :: (Int -> Int) -> Val
-liftIntUnaryOp _ =
+liftIntUnaryOp f = PrimFunc p where
   -- You should replace the following line with your own implementation
-  PrimFunc . const $ unimplemented "Lifting unary integer operator (`liftIntUnaryOp`)"
+  p [Number x] = return $ Number $ f x
+  p v = throwError $ UnexpectedArgs v
 
 liftBoolUnaryOp :: (Bool -> Bool) -> Val
 liftBoolUnaryOp f = PrimFunc p where
   p [Boolean x] = return $ Boolean $ f x
+  p [Number x] = case x of
+                    0 -> return $ Boolean True
+                    _ -> return $ Boolean False
   p v = throwError $ UnexpectedArgs v
 
 -- TODO
 liftCompOp :: (Int -> Int -> Bool) -> Val
-liftCompOp _ =
+liftCompOp f =  PrimFunc p where
   -- You should replace the following line with your own implementation
-  PrimFunc . const $ unimplemented "Lifting comparison operator (`liftCompOp`)"
+  p [] = return $ Boolean True
+  p [x] = return $ Boolean True
+  p ((Number x):(Number y):xx) = if f x y
+                      then p ((Number y):xx)
+                      else return $ Boolean False
+  p v = throwError $ UnexpectedArgs v
+
 
 --- ### Primtive operations
 
 -- Primitive function `car`
 -- TODO
 car :: [Val] -> EvalState Val
-car = const $ unimplemented "Primitive function `car`"
+car [List (x:xs)] = return x
+car [DottedList(x:xs) _] = return $ x
+car v = throwError $ UnexpectedArgs v
 
 -- Primitive function `cdr`
 -- TODO
 cdr :: [Val] -> EvalState Val
-cdr = const $ unimplemented "Primitive function `cdr`"
+cdr [List (x:xs)] = return $ List xs
+cdr [DottedList (x:xs) v] = return $ DottedList xs v
+cdr v = throwError $ UnexpectedArgs v
 
 -- Primitive function `cons`
 -- TODO
 cons :: [Val] -> EvalState Val
-cons = const $ unimplemented "Primitive function `cons`"
+cons [x,y] = return $ DottedList [x] y
+cons v = throwError $ UnexpectedArgs v
+
+list :: [Val] -> EvalState Val
+list x = return $ List x
 
 -- Primitive function `append`
 append :: [Val] -> EvalState Val
@@ -93,7 +113,7 @@ append vv = foldlM append' (List []) (map flattenList vv) where
 --   (apply + '(1 2 3))  => 6
 --   (apply car '((1 2 3)))  => 1
 applyPrim :: [Val] -> EvalState Val
-applyPrim = const $ unimplemented "Primitive function `apply`"
+applyPrim [f, (List xs)] = apply f xs
 
 -- Primitive function `eval`
 -- It evaluates the single argument as an expression
@@ -103,7 +123,7 @@ applyPrim = const $ unimplemented "Primitive function `apply`"
 -- Examples:
 --   (eval '(+ 1 2 3))  => 6
 evalPrim :: [Val] -> EvalState Val
-evalPrim = const $ unimplemented "Primitive function `eval`"
+evalPrim [xx] = eval xx
 
 -- Primitive function `=`, throwing type error for mismatch
 -- `=` is a comparison operator for numbers and booleans
@@ -115,7 +135,20 @@ evalPrim = const $ unimplemented "Primitive function `eval`"
 --   (= 'a 10) => Type error
 --   (= 'a 'b) => Type error
 equalSign :: [Val] -> EvalState Val
-equalSign = const $ unimplemented "Primitive function `=`"
+equalSign [] = return $ Boolean True
+equalSign ((Number x):(Number y):xs) = aux ((Number x):(Number y):xs)
+    where aux ((Number x):(Number y):xs) | x /= y = return $ Boolean False
+                                         | otherwise = aux ((Number y):xs)
+          aux [Number x] = return $ Boolean True
+          aux [] = return $ Boolean True
+          aux (v:_) = throwError $ TypeError v
+equalSign ((Boolean x):(Boolean y):xs) = aux ((Boolean x):(Boolean y):xs)
+    where aux ((Boolean x):(Boolean y):xs) | x /= y = return $ Boolean False
+                                           | otherwise = aux ((Boolean y):xs)
+          aux [Boolean x] = return $ Boolean True
+          aux [] = return $ Boolean True
+          aux (v:_) = throwError $ TypeError v
+equalSign (v:_) = throwError $ TypeError v
 
 -- Primitive function `eq?`, not throwing any error
 -- `eq?` is a comparison operator for atom values (numbers, booleans, and symbols)
@@ -128,42 +161,82 @@ equalSign = const $ unimplemented "Primitive function `=`"
 --   (eq? 'a 10) => #f
 --   (eq? 'a 'a) => #t
 eq :: [Val] -> EvalState Val
-eq = const $ unimplemented "Primitive function `eq?`"
+eq [] = return $ Boolean True
+eq ((Number x):(Number y):xs) = aux ((Number x):(Number y):xs)
+    where aux ((Number x):(Number y):xs) | x /= y = return $ Boolean False
+                                         | otherwise = aux ((Number y):xs)
+          aux [Number x] = return $ Boolean True
+          aux [] = return $ Boolean True
+          aux (v:_) = return $ Boolean False
+eq ((Boolean x):(Boolean y):xs) = aux ((Boolean x):(Boolean y):xs)
+    where aux ((Boolean x):(Boolean y):xs) | x /= y = return $ Boolean False
+                                           | otherwise = aux ((Boolean y):xs)
+          aux [Boolean x] = return $ Boolean True
+          aux [] = return $ Boolean True
+          aux (v:_) = return $ Boolean False
+eq ((Symbol x):(Symbol y):xs) = aux ((Symbol x):(Symbol y):xs)
+    where aux ((Symbol x):(Symbol y):xs) | x /= y = return $ Boolean False
+                                           | otherwise = aux ((Symbol y):xs)
+          aux [Symbol x] = return $ Boolean True
+          aux [] = return $ Boolean True
+          aux (v:_) = return $ Boolean False
+eq (v:_) = return $ Boolean False
 
 -- Primitive function `list?` predicate
 -- `(list? arg)` determines whether `arg` is a non-dotted list
 -- or an empty list (null)
 -- TODO
 isList :: [Val] -> EvalState Val
-isList = const $ unimplemented "Primitive function `list?`"
+isList [v] =
+  return . Boolean $ case flattenList v of
+    List _ -> True
+    _ -> False
+isList vv = throwError $ UnexpectedArgs vv
 
 -- Primitive function `symbol?` predicate
 -- TODO
 isSymbol :: [Val] -> EvalState Val
-isSymbol = const $ unimplemented "Primitive function `symbol?`"
+isSymbol [Symbol _] = return $ Boolean True
+isSymbol [_] = return $ Boolean False
+isSymbol vv = throwError $ UnexpectedArgs vv
 
 -- Primitive function `pair?` predicate
 -- Any `List` or `DottedList` is a pair
 -- TODO
 isPair :: [Val] -> EvalState Val
-isPair = const $ unimplemented "Primitive function `pair?`"
+isPair [List x] = return $ Boolean $ case x of
+                                        (x:xs) -> True
+                                        _ -> False
+isPair [DottedList _ _] = return $ Boolean True
+isPair [_] = return $ Boolean False
+isPair vv = throwError $ UnexpectedArgs vv
 
 -- Primitive function `number?` predicate
 -- TODO
 isNumber :: [Val] -> EvalState Val
-isNumber = const $ unimplemented "Primitive function `number?`"
+isNumber [Number _] = return $ Boolean True
+isNumber [_] = return $ Boolean False
+isNumber vv = throwError $ UnexpectedArgs vv
 
 -- Primitive function `boolean?` predicate
 -- TODO
 isBoolean :: [Val] -> EvalState Val
-isBoolean = const $ unimplemented "Primitive function `boolean?`"
+isBoolean [Boolean _] = return $ Boolean True
+isBoolean [_] = return $ Boolean False
+isBoolean vv = throwError $ UnexpectedArgs vv
 
 -- Primitive function `null?` predicate
 -- An empty list or its *equivalent* value is null
 -- Note: Think about what's equivalent
 -- TODO
 isNull :: [Val] -> EvalState Val
-isNull = const $ unimplemented "Primitive function `null?`"
+isNull [] = throwError $ UnexpectedArgs []
+isNull [Void] = return $ Boolean True
+isNull [List x] = return $ Boolean $ case x of
+                                        (x:xs) -> False
+                                        _ -> True
+isNull [_] = return $ Boolean False
+isNull vv = throwError $ UnexpectedArgs vv
 
 --- ### Runtime
 
@@ -177,4 +250,26 @@ runtime = H.fromList [ ("+", liftIntVargOp (+) 0)
                      , ("symbol?", PrimFunc isSymbol)
                      , ("list?", PrimFunc isList)
                      -- TODO: Insert more runtime bindings here
+                     , ("*", liftIntVargOp (*) 1)
+                     , ("/", liftIntVargOp (div) 1)
+                     , (">", liftCompOp (>))
+                     , ("<", liftCompOp (<))
+                     , (">=", liftCompOp (>=))
+                     , ("<=", liftCompOp (<=))
+                     , ("car", PrimFunc car)
+                     , ("cdr", PrimFunc cdr)
+                     , ("list", PrimFunc list)
+                     , ("not", liftBoolUnaryOp not)
+                     , ("=", PrimFunc equalSign)
+                     , ("eq?", PrimFunc eq)
+                     , ("modulo", liftIntBinOp mod)
+                     , ("abs", liftIntUnaryOp abs)
+                     , ("symbol?", PrimFunc isSymbol)
+                     , ("list?", PrimFunc isList)
+                     , ("pair?", PrimFunc isPair)
+                     , ("null?", PrimFunc isNull)
+                     , ("number?", PrimFunc isNumber)
+                     , ("boolean?", PrimFunc isBoolean)
+                     , ("apply", PrimFunc applyPrim)
+                     , ("eval", PrimFunc evalPrim)
                      ]
