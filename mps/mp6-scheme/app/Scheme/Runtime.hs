@@ -51,12 +51,18 @@ liftIntUnaryOp f = PrimFunc p where
   p [Number x] = return $ Number $ f x
   p v = throwError $ UnexpectedArgs v
 
+-- liftBoolUnaryOp :: (Bool -> Bool) -> Val
+-- liftBoolUnaryOp f = PrimFunc p where
+--   p [Boolean x] = return $ Boolean $ f x
+--   p [Number x] = case x of
+--                     0 -> return $ Boolean True
+--                     _ -> return $ Boolean False
+--   p v = throwError $ UnexpectedArgs v
+
 liftBoolUnaryOp :: (Bool -> Bool) -> Val
 liftBoolUnaryOp f = PrimFunc p where
   p [Boolean x] = return $ Boolean $ f x
-  p [Number x] = case x of
-                    0 -> return $ Boolean True
-                    _ -> return $ Boolean False
+  p [_] = return $ Boolean False
   p v = throwError $ UnexpectedArgs v
 
 -- TODO

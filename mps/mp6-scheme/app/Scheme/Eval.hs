@@ -188,14 +188,11 @@ eval expr@(List lst) = evalList $ map flattenList lst where
            val <- eval body
            put env
            return val
-        where aux [x] = do (x, e) <- getBinding x
-                           vn <- eval e
-                           modify $ H.insert x vn
-              aux (x:xs) = do (x, e) <- getBinding x
+        where aux [] = return ()
+              aux (x:xs) = do (v, e) <- getBinding x
                               vn <- eval e
-                              modify $ H.insert x vn
+                              modify $ H.insert v vn
                               aux xs
-
 
     -- lambda
     -- TODO: Handle `lambda` here. Use pattern matching to match the syntax
