@@ -41,4 +41,9 @@ parseE ("+":xs) =
 
 parseE (x:xs) | isInt x =
                 (IntExp (read x), xs)
+              | isSymbol x '(' =
+                  parseE xs
+              | isSymbol x ')' =
+                  parseE xs
+
 

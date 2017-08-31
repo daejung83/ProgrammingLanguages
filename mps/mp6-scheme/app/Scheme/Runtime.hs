@@ -142,18 +142,20 @@ evalPrim [xx] = eval xx
 --   (= 'a 'b) => Type error
 equalSign :: [Val] -> EvalState Val
 equalSign [] = return $ Boolean True
-equalSign ((Number x):(Number y):xs) = aux ((Number x):(Number y):xs)
-    where aux ((Number x):(Number y):xs) | x /= y = return $ Boolean False
-                                         | otherwise = aux ((Number y):xs)
-          aux [Number x] = return $ Boolean True
-          aux [] = return $ Boolean True
-          aux (v:_) = throwError $ TypeError v
-equalSign ((Boolean x):(Boolean y):xs) = aux ((Boolean x):(Boolean y):xs)
-    where aux ((Boolean x):(Boolean y):xs) | x /= y = return $ Boolean False
-                                           | otherwise = aux ((Boolean y):xs)
-          aux [Boolean x] = return $ Boolean True
-          aux [] = return $ Boolean True
-          aux (v:_) = throwError $ TypeError v
+equalSign ((Number x):(Number y):xs) = aux1 ((Number x):(Number y):xs)
+    where aux1 ((Number x):(Number y):xs) | x /= y = return $ Boolean False
+                                          | otherwise = aux1 ((Number y):xs)
+          aux1 [Number x] = return $ Boolean True
+          aux1 [] = return $ Boolean True
+          aux1 ((Number x):v:xs) = throwError $ TypeError v
+          aux1 (v:_) = throwError $ TypeError v
+equalSign ((Boolean x):(Boolean y):xs) = aux2 ((Boolean x):(Boolean y):xs)
+    where aux2 ((Boolean x):(Boolean y):xs) | x /= y = return $ Boolean False
+                                            | otherwise = aux2 ((Boolean y):xs)
+          aux2 [Boolean x] = return $ Boolean True
+          aux2 [] = return $ Boolean True
+          aux2 ((Boolean x):v:xs) = throwError $ TypeError v
+          aux2 (v:_) = throwError $ TypeError v
 equalSign (v:_) = throwError $ TypeError v
 
 -- Primitive function `eq?`, not throwing any error

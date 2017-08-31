@@ -1,0 +1,104 @@
+
+# EWS Module loader for CS421 - Cabal version
+# Eric Huber
+# 20170305 - added libgmp checking
+
+# These should be updated to match the current config for the course.
+desired_ghc=8.0.1
+desired_Cabal=1.24.2.0
+desired_ci=1.24.0.2
+
+# --------------------------------------------------
+
+echo " "
+echo "Loading CS421 modules.."
+echo "==========================="
+
+module load ghc
+module load Cabal
+module load cabal-install
+
+found_ghc=`module -t --redirect list | grep ghc | sed 's/.*ghc\/\(.*\)/\1/'`
+# echo $found_ghc # debug
+found_Cabal=`module -t --redirect list | grep Cabal | sed 's/.*Cabal\/\(.*\)/\1/'`
+# echo $found_Cabal # debug
+found_ci=`module -t --redirect list | grep cabal-install | sed 's/.*cabal-install\/\(.*\)/\1/'`
+# echo $found_ci # debug
+
+cs421_all_good=1
+
+if [[ "${desired_ghc}" == "${found_ghc}" ]]; then
+    echo -e "GHC: loaded correct version ${found_ghc}"
+else
+    echo -e "GHC: loaded WRONG version ${found_ghc}"
+    echo "Record this incident with the proctor!"
+    cs421_all_good=0
+fi
+
+if [[ "${desired_Cabal}" == "${found_Cabal}" ]]; then
+    echo "Cabal library: loaded correct version ${found_Cabal}"
+else
+    echo "Cabal library: loaded WRONG version ${found_Cabal}"
+    echo "Record this incident with the proctor!"
+    cs421_all_good=0
+fi
+
+if [[ "${desired_ci}" == "${found_ci}" ]]; then
+    echo "cabal-install: loaded correct version ${found_ci}"
+else
+    echo "cabal-install: loaded WRONG version ${found_ci}"
+    echo "Record this incident with the proctor!"
+    cs421_all_good=0
+fi
+
+# libgmp needs to be in the expected location but SOME of the CBTF machines
+# seem to have an issue with this for some reason.
+
+libgmp_fn="/lib64/libgmp.so"
+libgmp_alt="/lib64/libgmp.so.10"
+libgmp_linked_alt=0
+if [[ ! -f $libgmp_fn ]]; then
+    echo "MISSING FILE: ${libgmp_fn}"
+    cs421_all_good=0
+    # see if one of the absolute versions is available
+    if [[ -f $libgmp_alt ]]; then
+        echo "Found alt object at ${libgmp_alt}"
+        ln -s $libgmp_alt libgmp.so
+        if [[ $? -eq 0 ]]; then
+            echo "Created temporary alt link at ./libgmp.so"
+            libgmp_linked_alt=1
+        else
+            echo "Could not create temporary alt link at ./libgmp.so"
+        fi
+    else
+        echo "Could not find alternative at ${libgmp_alt}"
+    fi
+
+    if [[ $libgmp_linked_alt -eq 1 ]]; then
+        echo "The compiler MIGHT NOT WORK in this configuration."
+    else
+        echo "The compiler WILL NOT WORK in this configuration."
+    fi
+else
+    echo "Found libgmp at ${libgmp_fn}"
+fi
+
+if [[ $cs421_all_good -ne 1 ]]; then
+    echo "==========================="
+    echo "There were issues with the module load process."
+    echo "The Haskell compiler may not work."
+    echo "Contact the proctor and show them this message."
+    echo "You should MOVE TO A DIFFERENT COMPUTER if possible."
+    cs421_retval=1
+else
+    echo "==========================="
+    echo "Haskell modules loaded successfully."
+    cs421_retval=0
+fi
+
+# value accessed in Makefile
+export cs421_all_good
+
+echo " "
+
+return $cs421_retval

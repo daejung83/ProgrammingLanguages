@@ -26,10 +26,14 @@ repl env = do
       case runExcept $ runStateT (eval expr) env of   -- Eval
         -- TODO:
         -- Insert line here: If error, print error
+        Left err -> print err
         -- Insert line here: If return value is void,
         --                    loop with new env without printing
+        Right (Void, expr) -> repl expr
         -- Insert line here: Otherwise, print and loop with new env
         --
+        Right (val, expr) -> do print val
+                                repl expr
         -- The following line may be removed when you're done implementing
         --  the cases above:
         _ -> print "Error in Main.hs: Finish implementing repl"

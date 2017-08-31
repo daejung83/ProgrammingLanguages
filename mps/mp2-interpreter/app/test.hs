@@ -8,7 +8,7 @@ module Main where
 
 import System.IO (hFlush, stdout)
 
-import Data.HashMap.Strict as H (HashMap, empty, fromList, insert, lookup, union)
+import Data.HashMap.Strict as H (HashMap, empty, fromList, insert, lookup)
 import Data.Functor.Identity
 
 import Text.ParserCombinators.Parsec hiding (Parser)
@@ -162,8 +162,8 @@ orOp = opExp BoolOpExp "or"
 
 compOp :: Parser (Exp -> Exp -> Exp)
 compOp = let compOpExp s = symbol s >> return (CompOpExp s)
-         in     try (compOpExp "<=")
-            <|> try (compOpExp ">=")
+         in     compOpExp "<="
+            <|> compOpExp ">="
             <|> compOpExp "/="
             <|> compOpExp "=="
             <|> compOpExp "<"
@@ -333,11 +333,12 @@ liftBoolOp op (BoolVal x) (BoolVal y) = BoolVal $ op x y
 liftBoolOp _ _ _ = ExnVal "Cannot lift"
 
 liftCompOp :: (Int -> Int -> Bool) -> Val -> Val -> Val
-liftCompOp op (IntVal x) (IntVal y) = BoolVal $ op x y
-liftCompOp _ _ _ = ExnVal "Cannot lift"
+liftCompOp op (InVal x) (IntVal y) = BoolVal $ op x y
 
 --- Eval
 --- ----
+
+eval :: Exp -> Env -> Val
 
 {-data Exp = IntExp Int
          | BoolExp Bool
@@ -352,98 +353,51 @@ liftCompOp _ _ _ = ExnVal "Cannot lift"
     deriving (Show, Eq) -}
 
 
-eval :: Exp -> Env -> Val
 --- ### Constants
-justfilt (Just a) = a
+eval (IntVal i) _ = i
+eval (BoolVal i) _ = i
 
-oplook x y = justfilt(H.lookup x y)
-intlook x = oplook x intOps
---- IntExp Int
-eval (IntExp i) _ = IntVal i
---- BoolExp Bool
-eval (BoolExp i) _ = BoolVal i
+justfilt(Just a) = a
 
 --- ### Variables
-
-eval (VarExp s) env =
-    if val == Nothing
-      then ExnVal "No match in env"
-      else justfilt(val)
-  where val = H.lookup s env
+eval (VarExp a) env =
+	if val = Nothing
+		then "Exn: blah blah"
+		else justfilt(val)
+	where val = H.lookup a env
 
 --- ### Arithmetic
-{-eval (IntOpExp op (IntExp e1) (IntExp e2)) env =
-  case H.lookup op intOps
-    Just o ->
-      if op == "/" && e2 == IntVal 0
-        then ExnVal "Division by 0"
-        else IntVal $ o e1 e2
-    Nothing -> ExnVal "Cannot lift"-}
+eval (IntOpExp op x y) env =
+	let v1 = eval x env
+		v2 = eval y env
+		Just o = H.lookup op intOps
+	in if v2 == 0 && op == "/"
+		then ExnVal "Exn blah blah"
+		else liftIntOp o x y
 
-eval (IntOpExp op e1 e2) env =
-  let v1 = eval e1 env
-      v2 = eval e2 env
-      Just o = H.lookup op intOps
-  in if(op == "/" && v2 == IntVal 0)
-        then ExnVal "Division by 0"
-        else liftIntOp o v1 v2
-  
 --- ### Boolean and Comparison Operators
-eval (BoolOpExp op e1 e2) env =
-  let v1 = eval e1 env
-      v2 = eval e2 env
-      Just o = H.lookup op boolOps
-    in liftBoolOp o v1 v2
-
-eval (CompOpExp op e1 e2) env =
-  let v1 = eval e1 env
-      v2 = eval e2 env
-      Just o = H.lookup op compOps
-    in liftCompOp o v1 v2
 
 --- ### If Expressions
-eval (IfExp op e1 e2) env =
-  let o = eval op env
-    in case o of
-      BoolVal a -> 
-          if a
-            then eval e1 env
-            else eval e2 env
-      otherwise -> ExnVal "Condition is not a Bool"
+
+eval (IfExp bo x y) env =
+	let o = eval bo env
+		in case o of
+			BoolVal a ->
+				if a
+					then x
+					else y
+			otherwise -> ExnVal "asdflksajdf"
+
 
 --- ### Functions and Function Application
-
 eval (FunExp arr b) env = CloVal arr b env
 
-eval (AppExp fun_arr exp_arr) env =
-  let o = eval fun_arr env
-  in case o of
-    CloVal arr b env ->
-      evalAppExp arr exp_arr b env env
-    otherwise -> ExnVal "Apply to non-closure"
+eval (AppExp str arr) env =
+	
+
 
 
 --- ### Let Expressions
-
---LetExp [(String,Exp)] Exp
-                                      
-eval (LetExp a b) env = evalLetExp (LetExp a b) env env
-
---helper for let
-evalLetExp :: Exp -> Env -> Env -> Val
-evalLetExp (LetExp ((x,y):xs) b) env new_env =
-  evalLetExp (LetExp xs b) env $ H.insert x (eval y env) new_env
-
-evalLetExp (LetExp [] b) env new_env = eval b new_env
-
-
---helper for App
-evalAppExp :: [String] -> [Exp] -> Exp -> Env -> Env -> Val
-evalAppExp [] _ b env new_env = eval b new_env
-evalAppExp (x:xs) (y:ys) b env new_env =
-  evalAppExp xs ys b env $ H.insert x (eval y env) new_env
-
-
 
 --- Statements
 --- ----------
@@ -451,37 +405,12 @@ evalAppExp (x:xs) (y:ys) b env new_env =
 exec :: Stmt -> PEnv -> Env -> Result
 exec (PrintStmt e) penv env = (val, penv, env)
     where val = show $ eval e env
+exec _ _ _ = undefined
 
 --- ### Set Statements
-exec (SetStmt s val) penv env = ("", penv, H.insert s (eval val env) env)
+
 --- ### Sequencing
-exec (SeqStmt []) penv env = ("", penv, env)
-exec (SeqStmt (x:xs)) penv env =
-        let (a , penv1, env1) = exec x penv env
-            (b , penv2, env2) = exec (SeqStmt xs) penv1 env1
-        in (a ++ b, penv2, env2)
+
 --- ### If Statements
-exec (IfStmt (BoolExp a) b c) penv env =
-  if a
-    then exec b penv env
-    else exec c penv env
-exec (IfStmt _ _ _) penv env = ("exn: Condition is not a Bool", penv, env)
 
 --- ### Procedure and Call Statements
---ProcedureStmt String [String] Stmt
-exec (ProcedureStmt a xs com) penv env = ("", H.insert a (ProcedureStmt a xs com) penv, env)
-
---CallStmt String [Exp]
-exec (CallStmt com list) penv env = 
-  let h = H.lookup com penv
-  in case h of
-    Just (ProcedureStmt a xs com) ->
-      exec com penv (execCallStmt xs list env) 
-    otherwise -> ("Procedure " ++ com ++ " undefined", penv, env)
-
---exec helper
-execCallStmt :: [String] -> [Exp] -> Env -> Env
-execCallStmt [] _ env = env
-execCallStmt _ [] env = env
-execCallStmt (x:xs) (y:ys) env = H.union (H.fromList [(x, eval y env)]) (execCallStmt xs ys env)
-
